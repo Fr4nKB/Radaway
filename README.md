@@ -1,2 +1,5 @@
 # Radaway
-IIoT project: IoT system to monitor poisoning of a nuclear reactor core using COAP and MQTT
+## Usage
+- Install mysql server, create a new user (change the credentials in DBDriver.java accordingly)
+- Flash boards using makefile
+- Start coordinator
