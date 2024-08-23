@@ -1,0 +1,22 @@
+# Start border router
+cd ~/contiki-ng/examples/rpl-border-router/
+make TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM0 border-router.dfu-upload
+make TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM0 connect-router
+
+# Start sensors
+cd ~/Radaway/mqtt
+make -j4 TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM1 neutron_flux.dfu-upload
+make login TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM1
+
+# Start mosquitto
+sudo rm -r /var/run/mosquitto/
+sudo mkdir -m 777 /var/run/mosquitto
+mosquitto -v -c ~/Radaway/mosquitto.conf; exec bash
+
+# Start coordinator
+cd ~/Radaway/it.unipi.iot.coordinator/; mvn install; java -jar target/it.unipi.iot.coordinator-0.0.1-SNAPSHOT.jar; exec bash
+
+# Start actuators
+cd ~/Radaway/coap
+make -j4 TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM2 actuator_controlrods.dfu-upload
+make login TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM2

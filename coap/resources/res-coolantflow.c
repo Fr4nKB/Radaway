@@ -16,7 +16,7 @@ static void res_get_handler(coap_message_t *request, coap_message_t *response, u
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 EVENT_RESOURCE(
-	res_status,
+	res_coolant_flow,
 	"title=\"Coolant Flow \" GET, PUT mode=0|1|2;rt=\"coolant_flow_perc\"",
 	res_get_handler,
 	NULL,
@@ -65,5 +65,5 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
 		coap_set_status_code(response, BAD_REQUEST_4_00);
 	}
 
-	LOG_INFO("Coolant flow at %d %\n", coolant_flow_perc);
+	LOG_INFO("Coolant flow at %d\n", coolant_flow_perc);
 }

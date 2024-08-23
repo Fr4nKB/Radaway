@@ -19,6 +19,7 @@ class CoapRegistrationResource extends CoapResource {
         CoAP.ResponseCode responseCode = CoAP.ResponseCode.BAD_REQUEST;
 
         try {
+        	System.out.println(exchange.getRequestText());
             json = JsonParser.parseString(exchange.getRequestText()).getAsJsonObject();
         }
         catch (Exception err) {

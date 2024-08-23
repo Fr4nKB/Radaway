@@ -63,6 +63,7 @@ static char sub_topic[BUFFER_SIZE];
 // Periodic timer to check the state of the MQTT client
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
 static struct etimer periodic_timer;
+static struct etimer sleep_timer;
 
 /*
  * The main MQTT buffers.
@@ -79,7 +80,7 @@ PROCESS(sensor, "sensor_neutron_flux");
 AUTOSTART_PROCESSES(&sensor);
 
 static bool increase_inserted_control_rods = false;
-static int neutron_flux = 31;	// Tera neutrons/cm^2/s
+static int neutron_flux = 31000;  // Giga neutrons/cm^2/s
 static int variation = 0;
 
 // handle incoming messages
@@ -158,7 +159,7 @@ PROCESS_THREAD(sensor, ev, data) {
 
 	static mqtt_status_t status;
 	static char broker_address[CONFIG_IP_ADDR_STR_LEN];
-    static button_hal_button_t *btn;
+    //static button_hal_button_t *btn;
 	
 	// Initialize the ClientID as MAC address
 	snprintf(client_id, BUFFER_SIZE, "%02x%02x%02x%02x%02x%02x",
@@ -173,13 +174,13 @@ PROCESS_THREAD(sensor, ev, data) {
 	// Initialize periodic timer to check the status 
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
-    //button initialization
-    btn = button_hal_get_by_ind(0);
-
+    	//button initialization
+    	//btn = button_hal_get_by_id(0);
+    	
 	while(true) {
 		PROCESS_YIELD();
 
-        if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL))
+        if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
                             
         if(state == STATE_INIT && have_connectivity()) state = STATE_NET_OK;
@@ -210,9 +211,14 @@ PROCESS_THREAD(sensor, ev, data) {
         }
             
         if(state == STATE_SUBSCRIBED) {
-            if (increase_inserted_control_rods) variation = -neutron_flux * (rand() % 3)/100;
-            else variation = neutron_flux * (rand() % 3)/100;
-			neutron_flux += variation
+            if (increase_inserted_control_rods) {
+            	neutron_flux -= neutron_flux * (rand() % 3)/100.0;
+            }
+            else {
+            	variation = neutron_flux * (rand() % 2)/100.0;
+            	if(rand() % 2 == 1) neutron_flux += variation;
+            	else neutron_flux -= variation;
+            }
 
 			LOG_INFO("NEW NEUTRON FLUX: %d\n", neutron_flux);
 			
@@ -229,7 +235,7 @@ PROCESS_THREAD(sensor, ev, data) {
             continue;
         }
         
-        etimer_set(&e_timer, STATE_MACHINE_PERIODIC);
+        etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);
     }
 
 	PROCESS_END();

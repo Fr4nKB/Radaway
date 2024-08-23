@@ -63,6 +63,7 @@ static char sub_topic[BUFFER_SIZE];
 // Periodic timer to check the state of the MQTT client
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
 static struct etimer periodic_timer;
+static struct etimer sleep_timer;
 
 /*
  * The main MQTT buffers.
@@ -158,7 +159,7 @@ PROCESS_THREAD(sensor, ev, data) {
 
 	static mqtt_status_t status;
 	static char broker_address[CONFIG_IP_ADDR_STR_LEN];
-    static button_hal_button_t *btn;
+    //static button_hal_button_t *btn;
 	
 	// Initialize the ClientID as MAC address
 	snprintf(client_id, BUFFER_SIZE, "%02x%02x%02x%02x%02x%02x",
@@ -174,12 +175,12 @@ PROCESS_THREAD(sensor, ev, data) {
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
     //button initialization
-    btn = button_hal_get_by_ind(0);
+    //btn = button_hal_get_by_ind(0);
 
 	while(true) {
 		PROCESS_YIELD();
 
-        if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL))
+        if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
                             
         if(state == STATE_INIT && have_connectivity()) state = STATE_NET_OK;
@@ -210,15 +211,14 @@ PROCESS_THREAD(sensor, ev, data) {
         }
             
         if(state == STATE_SUBSCRIBED) {
-            if (increase_coolant_flow) {
-				variation = rand() % 6;
-				temperature -= variation
-			}
-            else {
-				variation = 10 - (rand() % 6);
-                temperature = temperature + variation;
-			}
-
+            if(increase_coolant_flow) {
+	    	temperature -= rand() % 4;
+	    }
+	    else {
+	    	variation = 6 - (rand() % 3);
+	    	if(rand() % 2 == 1) temperature += variation;
+	    	else temperature -= variation;
+	    }
 			LOG_INFO("NEW TEMPERATURE: %d\n", temperature);
 			
 			sprintf(pub_topic, "%s", "temperature");
@@ -234,7 +234,7 @@ PROCESS_THREAD(sensor, ev, data) {
             continue;
         }
         
-        etimer_set(&e_timer, STATE_MACHINE_PERIODIC);
+        etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);
     }
 
 	PROCESS_END();

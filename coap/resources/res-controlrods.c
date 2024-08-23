@@ -65,5 +65,5 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
 		coap_set_status_code(response, BAD_REQUEST_4_00);
 	}
 	
-	LOG_INFO("Control rods inserted at %d %\n", control_rods_insertion_perc);
+	LOG_INFO("Control rods inserted at %d\n", control_rods_insertion_perc);
 }

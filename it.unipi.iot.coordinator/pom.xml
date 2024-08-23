@@ -109,7 +109,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>greenHouse.unipi.it.Main</mainClass>
+                            <mainClass>it.unipi.iot.coordinator.Coordinator</mainClass>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                     </archive>

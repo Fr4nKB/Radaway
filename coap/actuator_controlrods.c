@@ -18,21 +18,20 @@ static coap_endpoint_t server_ep;
 static coap_message_t request[1];       /* This way  the packet can be treated as pointer as usual. */
 
 static char *service_registration_url = "/registration";
-static char *registration_payload = "{\"name\":\"actuator_control_rods\"}"
+static char *registration_payload = "{\"name\":\"actuator_control_rods\"}";
 static bool registration_status = false;
 
 extern coap_resource_t res_control_rods;
 static struct etimer sleep_timer;
 
 void client_chunk_handler(coap_message_t *response) {
-	const uint8_t *chunk;
-
 	if(response == NULL || response->code != 65) {
-		LOG_INFO("Request failed");
+		LOG_INFO("REGISTRATION FAILED\n");
 		return;
 	}
 
 	registration_status = true;
+	LOG_INFO("CONTROL RODS REGISTRATION: DONE\n");
 }
 
 PROCESS(actuator, "actuator_control_rods");
@@ -43,8 +42,7 @@ PROCESS_THREAD(actuator, ev, data) {
 	PROCESS_BEGIN();
 	leds_set(LEDS_RED);
 	
-	LOG_INFO("REGISTERING CONTROL RODS: ");
-	while(1) {
+	while(!registration_status) {
 		// populate the coap_endpoint_t data structure
 		coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &server_ep);
 		// prepare the message
@@ -52,7 +50,7 @@ PROCESS_THREAD(actuator, ev, data) {
 		coap_set_header_uri_path(request, service_registration_url);
 
 		// set payload
-		coap_set_payload(request, (uint8_t *)registration_payload, sizeof(registration_payload) - 1);
+		coap_set_payload(request, (uint8_t *)registration_payload, strlen(registration_payload));
 	
 		COAP_BLOCKING_REQUEST(&server_ep, request, client_chunk_handler);
 
@@ -60,9 +58,9 @@ PROCESS_THREAD(actuator, ev, data) {
 		if(!registration_status) {
 			etimer_set(&sleep_timer, 5 * CLOCK_SECOND);
 			PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&sleep_timer));
+			LOG_INFO("ATTEMPTING REGISTRATION\n");
 		}
 	}
-	LOG_INFO("DONE\n");
     
 	// map actuator to coap://ip/name to later send commands
 	coap_activate_resource(&res_control_rods, "actuator_control_rods");
