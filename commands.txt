@@ -20,3 +20,4 @@ cd ~/Radaway/it.unipi.iot.coordinator/; mvn install; java -jar target/it.unipi.i
 cd ~/Radaway/coap
 make -j4 TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM2 actuator_controlrods.dfu-upload
 make login TARGET=nrf52840 BOARD=dongle PORT=/dev/ttyACM2
+

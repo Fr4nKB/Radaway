@@ -1,5 +1,7 @@
 package it.unipi.iot.coordinator;
 
+import java.util.Map;
+
 import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.coap.CoAP;
@@ -10,50 +12,50 @@ import com.google.gson.JsonObject;
 public class CoapHandler extends Thread {
 
     private DBDriver driver;
-    private String ip;
+    private String ipv6;
     private String type;
     private int mode;
 
-    public CoapHandler(String type, int mode) {
-        this.type = type;
-        this.mode = mode;
-
-        driver = DBDriver.getInstance();
-        this.ip = driver.getIp(this.type);
+    public CoapHandler(String ip, String actuatorType, int newMode) {
+        ipv6 = ip;
+        type = actuatorType;
+        mode = newMode;
     }
 
     @Override
     public void run() {
-        CoapClient coapClient = new CoapClient("coap://[" + ip + "]/" + type);
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("mode", mode);
-        
-        CoapResponse response = coapClient.put(jsonObject.toString(), MediaTypeRegistry.APPLICATION_JSON);
-        coapClient.shutdown();
+    	try {
+            CoapClient coapClient = new CoapClient("coap://[" + ipv6 + "]/" + type + "?mode=" + mode);
+            CoapResponse response = coapClient.put("", MediaTypeRegistry.TEXT_PLAIN);
+            
+            if(response == null) System.out.println("Failed to change mode!");
+            else {
+                CoAP.ResponseCode code = response.getCode();
 
-        if(response != null) {
+                switch(code) {
+                    case CHANGED:
+                        driver.insertActuatorStatus(type, ipv6, mode);
+                        break;
 
-            CoAP.ResponseCode code = response.getCode();
+                    case BAD_REQUEST:
+                        System.err.println("Internal application error!");
+                        break;
 
-            switch(code) {
-                case CHANGED:
-                    driver.insertActuatorStatus(type, ip, mode);
-                    break;
+                    case BAD_OPTION:
+                        System.err.println("BAD_OPTION error");
+                        break;
 
-                case BAD_REQUEST:
-                    System.err.println("Internal application error!");
-                    break;
+                    default:
+                        System.err.println("Actuator error, code: " + code);
+                        break;
 
-                case BAD_OPTION:
-                    System.err.println("BAD_OPTION error");
-                    break;
-
-                default:
-                    System.err.println("Actuator error!");
-                    break;
-
+                }
             }
-
-        }
+            coapClient.shutdown();
+    	}
+    	catch(Exception e) {
+    		return;
+    	}
+       
     }
 }

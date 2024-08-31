@@ -8,20 +8,19 @@
 /* Log configuration */
 #include "sys/log.h"
 #define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_APP
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 static int control_rods_insertion_perc = 100;
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
-EVENT_RESOURCE(
+RESOURCE(
 	res_control_rods,
-	"title=\"Control Rods \" GET, PUT mode=0|1|2;rt=\"actuator\"",
+	"title=\"Control Rods \" GET, PUT mode=0|1|2; rt=\"actuator\"",
 	res_get_handler,
 	NULL,
-	NULL,
-	res_put_handler, 
+	res_put_handler,
 	NULL
 );
 
@@ -37,6 +36,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
 	bool success = false;
 
 	if((len = coap_get_query_variable(request, "mode", &mode))) {
+		LOG_INFO("NEW MODE: %s\n", mode);
 	
 		if(strncmp(mode, "0", len) == 0) {   // low -> 10% of control rods fully inserted
 			coap_set_status_code(response, CHANGED_2_04);
@@ -49,7 +49,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
 			coap_set_status_code(response, CHANGED_2_04);
 			control_rods_insertion_perc = 50;
 			success = true;
-			leds_set(LEDS_YELLOW);
+			leds_set(LEDS_GREEN);
 		}
 		
 		else if(strncmp(mode, "2", len) == 0) {   // shut down reactor -> 100% of control rods fully inserted

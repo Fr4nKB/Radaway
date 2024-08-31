@@ -82,6 +82,7 @@ AUTOSTART_PROCESSES(&sensor);
 static bool increase_coolant_flow = false;
 static int pressure = 160;		//bar
 static int variation = 0;
+static int max_decrease_perc = 3;
 
 // handle incoming messages
 static void pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len) {
@@ -159,7 +160,7 @@ PROCESS_THREAD(sensor, ev, data) {
 
 	static mqtt_status_t status;
 	static char broker_address[CONFIG_IP_ADDR_STR_LEN];
-    //static button_hal_button_t *btn;
+    static button_hal_button_t *btn;
 	
 	// Initialize the ClientID as MAC address
 	snprintf(client_id, BUFFER_SIZE, "%02x%02x%02x%02x%02x%02x",
@@ -175,7 +176,7 @@ PROCESS_THREAD(sensor, ev, data) {
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
     //button initialization
-    //btn = button_hal_get_by_ind(0);
+    btn = button_hal_get_by_ind(0);
 
 	while(true) {
 		PROCESS_YIELD();
@@ -211,8 +212,8 @@ PROCESS_THREAD(sensor, ev, data) {
         }
             
         if(state == STATE_SUBSCRIBED) {
-            if (increase_coolant_flow) {
-            	pressure -= rand() % 3;
+            if(increase_coolant_flow) {
+            	pressure -= rand() % max_decrease_perc;
             }
             else {
             	variation = rand() % 2;
@@ -233,6 +234,19 @@ PROCESS_THREAD(sensor, ev, data) {
             state = STATE_INIT;
             etimer_set(&sleep_timer, RECONNECTION_INTERVAL);
             continue;
+        }
+
+        if(ev == button_hal_press_event) {
+            btn = (button_hal_button_t *)data;
+            if(btn->unique_id == 0) {
+				max_decrease_perc = (max_decrease_perc + 1) % 7;
+				if(max_decrease_perc == 0) {
+					max_decrease_perc = 3;
+					leds_set(LEDS_RED);
+				}
+				else leds_set(LEDS_BLUE);
+                LOG_INFO("CHANGED MAX DECREASE PERCENTAGE TO: %d\n", max_decrease_perc);
+            }
         }
         
         etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);

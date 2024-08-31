@@ -1,6 +1,7 @@
 package it.unipi.iot.coordinator;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -11,6 +12,7 @@ import com.google.gson.JsonParser;
 public class MQTTCallback implements MqttCallback {
 
     private final DBDriver driver = DBDriver.getInstance();
+    private long lastUpdate = 0;
 
     private double calculateAverage(List<Integer> values) {
         int sum = 0;
@@ -20,20 +22,39 @@ public class MQTTCallback implements MqttCallback {
         return (double) sum / values.size();
     }
 
-    private void updateActuatorStatus(String topic, Double thresholdPerc) {
-        List<Integer> values = driver.getValuesFromLastMinute(topic, 1);
-        List<Integer> oldValues = driver.getValuesFromLastMinute(topic, 2);
+    private void updateActuatorStatus(String sensorType, Double thresholdPerc) {
+        long currentTime = System.currentTimeMillis();
+        if(currentTime <= lastUpdate + 10 * 1000) return;
+        else lastUpdate = currentTime;
+        
+    	List<Integer> values = driver.getValuesFromLastSeconds(sensorType, 0, 5);
+        List<Integer> oldValues = driver.getValuesFromLastSeconds(sensorType, 5, 10);
 
         double newAverage = calculateAverage(values);
         double oldAverage = calculateAverage(oldValues);
+        
+		Map<String, String> ipAndType = driver.getActuatorInfoFromSensorType(sensorType);
+		String ip = ipAndType.get("ipv6");
+		String actuatorType = ipAndType.get("type");
 
-        String type = (topic.equals("temperature") || topic.equals("pressure")) ? "actuator_coolant_flow" : "actuator_control_rods";
+        int newMode = -1;
+        if(Math.abs(newAverage - oldAverage) > oldAverage * thresholdPerc) {
+        	if(actuatorType.equals("actuator_control_rods")) newMode = 2;
+        	else newMode = 0;
+        }
+        else {
+        	int rndVal = (int) (Math.random() * 2);
+        	if(actuatorType.equals("actuator_coolant_flow")) newMode = 1 - rndVal;
+        	else newMode = rndVal;
+        }
 
-        int newMode = (newAverage < oldAverage * (1 - thresholdPerc)) ? 
-                    (type.equals("actuator_coolant_flow") ? 2 : 0) : 
-                    (type.equals("actuator_coolant_flow") ? 0 : 2);
-
-        if(newMode != -1) new CoapHandler(type, newMode).start();
+        try { 
+        	if(newMode != -1) {
+        		new CoapHandler(ip, actuatorType, newMode).start();
+                MQTTPublisher.getInstance().updateSensorValues(actuatorType, newMode);
+        	}
+        }
+        catch(Exception e) { return; }
     }
 
     @Override
@@ -46,17 +67,18 @@ public class MQTTCallback implements MqttCallback {
         String payload = new String(message.getPayload());
         JsonObject jsonObject = null;
         int value = -1;
-
+        
         try {
             jsonObject = JsonParser.parseString(payload).getAsJsonObject();
             value = jsonObject.get("value").getAsInt();
-        } catch (Exception e) {
+            
+            driver.insertSensorSample(topic, value);
+            updateActuatorStatus(topic, 0.05);
+        }
+        catch (Exception e) {
             e.printStackTrace();
             return;
         }
-
-        driver.insertSensorSample(topic, value);
-        updateActuatorStatus(topic, 0.01);
     }
 
     @Override

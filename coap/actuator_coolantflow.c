@@ -18,7 +18,7 @@ static coap_endpoint_t server_ep;
 static coap_message_t request[1];       /* This way  the packet can be treated as pointer as usual. */
 
 static char *service_registration_url = "/registration";
-static char *registration_payload = "{\"name\":\"actuator_coolant_flow\"}";
+static char *registration_payload = "{\"name\":\"actuator_coolant_flow\", \"sensor_types\":[\"temperature\", \"pressure\"]}";
 static bool registration_status = false;
 
 extern coap_resource_t res_coolant_flow;
@@ -34,7 +34,7 @@ void client_chunk_handler(coap_message_t *response) {
 	LOG_INFO("COOLANT FLOW REGISTRATION: DONE\n");
 }
 
-PROCESS(node, "coolant_flow");
+PROCESS(node, "actuator_coolant_flow");
 AUTOSTART_PROCESSES(&node);
 
 PROCESS_THREAD(node, ev, data){
@@ -63,6 +63,8 @@ PROCESS_THREAD(node, ev, data){
 	}
     
 	coap_activate_resource(&res_coolant_flow, "actuator_coolant_flow");
+	LOG_INFO("actuator_coolant_flow: ACTIVATED\n");
+	leds_set(LEDS_GREEN);
 	
 	PROCESS_YIELD();
     PROCESS_END();

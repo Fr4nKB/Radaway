@@ -19,18 +19,22 @@ class CoapRegistrationResource extends CoapResource {
         CoAP.ResponseCode responseCode = CoAP.ResponseCode.BAD_REQUEST;
 
         try {
-        	System.out.println(exchange.getRequestText());
-            json = JsonParser.parseString(exchange.getRequestText()).getAsJsonObject();
+            json = JsonParser.parseString(exchange.getRequestText() + "}").getAsJsonObject();
         }
         catch (Exception err) {
             System.err.println("Json format not valid!");
         }
 
-        if (json != null) {
+        if(json != null) {
             try {
+            	String sourceAddress = exchange.getSourceAddress().toString().replace("/", "");
+                String name = json.get("name").getAsString();
+                String sensorTypes = json.getAsJsonArray("sensor_types").toString();
+
                 DBDriver.getInstance().registerActuator(
-                    exchange.getSourceAddress().toString(),
-                    json.get("name").getAsString()
+                    sourceAddress,
+                    name,
+                    sensorTypes
                 );
 
                 responseCode = CoAP.ResponseCode.CREATED;

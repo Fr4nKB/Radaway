@@ -15,11 +15,10 @@ static int coolant_flow_perc = 0;
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
-EVENT_RESOURCE(
+RESOURCE(
 	res_coolant_flow,
-	"title=\"Coolant Flow \" GET, PUT mode=0|1|2;rt=\"coolant_flow_perc\"",
+	"title=\"Coolant Flow \" GET, PUT mode=0|1|2; rt=\"actuator\"",
 	res_get_handler,
-	NULL,
 	NULL,
 	res_put_handler,
 	NULL
@@ -37,6 +36,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
 	bool success = false;
 
 	if ((len = coap_get_query_variable(request, "mode", &mode))) {
+		printf("NEW MODE: %s\n", mode);
 
 		if (strncmp(mode, "0", len) == 0) {   // reactor off
 			coap_set_status_code(response, CHANGED_2_04);
@@ -49,7 +49,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
 			coap_set_status_code(response, CHANGED_2_04);
 			coolant_flow_perc = 70;
 			success = true;
-			leds_set(LEDS_YELLOW);
+			leds_set(LEDS_GREEN);
 		}
 
 		else if (strncmp(mode, "2", len) == 0) {  // max coolant flow

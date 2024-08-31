@@ -79,9 +79,10 @@ static struct mqtt_connection conn;
 PROCESS(sensor, "sensor_neutron_flux");
 AUTOSTART_PROCESSES(&sensor);
 
-static bool increase_inserted_control_rods = false;
-static int neutron_flux = 31000;  // Giga neutrons/cm^2/s
+static bool increase_inserted_control_rods = true;
+static int neutron_flux = 0;  // Giga neutrons/cm^2/s
 static int variation = 0;
+static int max_increase_perc = 6;
 
 // handle incoming messages
 static void pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len) {
@@ -159,7 +160,7 @@ PROCESS_THREAD(sensor, ev, data) {
 
 	static mqtt_status_t status;
 	static char broker_address[CONFIG_IP_ADDR_STR_LEN];
-    //static button_hal_button_t *btn;
+    static button_hal_button_t *btn;
 	
 	// Initialize the ClientID as MAC address
 	snprintf(client_id, BUFFER_SIZE, "%02x%02x%02x%02x%02x%02x",
@@ -175,10 +176,24 @@ PROCESS_THREAD(sensor, ev, data) {
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
     	//button initialization
-    	//btn = button_hal_get_by_id(0);
+    	btn = button_hal_get_by_id(0);
+	leds_set(LEDS_BLUE);
     	
 	while(true) {
 		PROCESS_YIELD();
+		
+	if(ev == button_hal_press_event) {
+            btn = (button_hal_button_t *)data;
+            if(btn->unique_id == 0) {
+				max_increase_perc = (max_increase_perc + 1) % 7;
+				if(max_increase_perc == 0) {
+					max_increase_perc = 3;
+					leds_set(LEDS_RED);
+				}
+				else leds_set(LEDS_BLUE);
+                LOG_INFO("CHANGED MAX DECREASE PERCENTAGE TO: %d\n", max_increase_perc);
+            }
+        }
 
         if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
@@ -211,13 +226,16 @@ PROCESS_THREAD(sensor, ev, data) {
         }
             
         if(state == STATE_SUBSCRIBED) {
-            if (increase_inserted_control_rods) {
-            	neutron_flux -= neutron_flux * (rand() % 3)/100.0;
+            if(increase_inserted_control_rods) {
+            	variation = neutron_flux * (rand() % 4)/100.0;
+            	if(rand() % 3 == 1) neutron_flux += variation;
+            	else neutron_flux -= variation;
+            	
+            	if(neutron_flux <= 0) neutron_flux = 1;
             }
             else {
-            	variation = neutron_flux * (rand() % 2)/100.0;
-            	if(rand() % 2 == 1) neutron_flux += variation;
-            	else neutron_flux -= variation;
+            	if(neutron_flux < 5000) neutron_flux = 5000;	// jump start
+            	else neutron_flux += neutron_flux * (rand() % max_increase_perc)/100.0;
             }
 
 			LOG_INFO("NEW NEUTRON FLUX: %d\n", neutron_flux);

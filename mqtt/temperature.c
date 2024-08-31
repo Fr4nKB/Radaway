@@ -159,7 +159,7 @@ PROCESS_THREAD(sensor, ev, data) {
 
 	static mqtt_status_t status;
 	static char broker_address[CONFIG_IP_ADDR_STR_LEN];
-    //static button_hal_button_t *btn;
+    static button_hal_button_t *btn;
 	
 	// Initialize the ClientID as MAC address
 	snprintf(client_id, BUFFER_SIZE, "%02x%02x%02x%02x%02x%02x",
@@ -175,7 +175,7 @@ PROCESS_THREAD(sensor, ev, data) {
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
     //button initialization
-    //btn = button_hal_get_by_ind(0);
+    btn = button_hal_get_by_ind(0);
 
 	while(true) {
 		PROCESS_YIELD();
@@ -232,6 +232,14 @@ PROCESS_THREAD(sensor, ev, data) {
             state = STATE_INIT;
             etimer_set(&sleep_timer, RECONNECTION_INTERVAL);
             continue;
+        }
+
+		if(ev == button_hal_press_event) {
+            btn = (button_hal_button_t *)data;
+            if(btn->unique_id == 0) {
+		temperature += 20;
+                LOG_INFO("TEMPERATURE INCREASED AT: %d\n", temperature);
+            }
         }
         
         etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);

@@ -15,99 +15,54 @@ public class CLI extends Thread {
 
     private MqttClient client;
     private DBDriver driver;
-    private List<Integer> lastModes;
-    String broker = "tcp://localhost:1883";
+    String broker = "tcp://[::1]:1883";
     String clientId = "RemoteApp";
-    int qos = 2;    //ensure highest reliability at a speed cost
     
     public CLI() {
-        this.lastModes = new ArrayList<>();
-        lastModes.add(-1);
-        lastModes.add(-1);
         driver = DBDriver.getInstance();
 
         try {
             client = new MqttClient(broker, clientId);
+            client.setCallback(new MQTTCallback());
             client.connect();
+            
             client.subscribe("temperature");
             client.subscribe("pressure");
             client.subscribe("neutron_flux");
-
-            client.setCallback(new MQTTCallback());
-
+            
+        	System.out.println("MQTT: DONE");
         } catch (MqttException e) {
             e.printStackTrace();
         }
     }
-
-    private void publishValue(String topic, String content) {
-        try {
-            MqttClient publisher = new MqttClient(broker, clientId);
-            publisher.connect();
-
-            MqttMessage message = new MqttMessage(content.getBytes());
-            message.setQos(qos);
-            publisher.publish(topic, message);
-
-            System.out.println("Message published");
-            publisher.disconnect();
-        }
-        catch (MqttException e) {
-            e.printStackTrace();
-        }
-    }
     
-    private void updateSensorValues(String type, int mode) {
-        String content = "";
-
-        if(type == "actuator_control_rods") {
-            if(mode < lastModes.get(0)) content = "INC";
-            else if(mode > lastModes.get(1)) content = "DEC";
-
-            if(content != "") publishValue("control_rods", content);
-        }
-        else if(type == "actuator_coolant_flow") {
-            if(mode > lastModes.get(0)) content = "INC";
-            else if(mode < lastModes.get(1)) content = "DEC";
-            
-            if(content != "") publishValue("coolant", content);
-        }
-    }
-
     private int getActuatorCurrentStatus(String type) {
-
-        String ip = driver.getIp(type);
-        CoapClient coapClient = new CoapClient("coap://[" + ip + "]/" + type);
-        CoapResponse response = coapClient.get();
-        coapClient.shutdown();
-
-        int ret = -1;
-
-        if(response == null) return ret;
-            
-        try {
-        	String content = response.getResponseText();
+    	try {
+    		String ip = driver.getIpFromActuatorType(type);
+	        CoapClient coapClient = new CoapClient("coap://[" + ip + "]/" + type);
+	        CoapResponse response = coapClient.get();
+	        coapClient.shutdown();
+	        
+	        if(response == null) return -1;
+	        String content = response.getResponseText();
         	JsonObject jsonObject = JsonParser.parseString(content).getAsJsonObject();
 
-        	ret = jsonObject.get("status").getAsInt();
-        }
+        	return jsonObject.get("status").getAsInt();
+    	}
         catch (Exception e) {
             e.printStackTrace();
+            return -1;
         }
-
-        return ret;
     }
 
     @Override
     public void run() {
-        // Enter data using BufferReader
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         while(true) {
             System.out.println("----- Main menu -----");
             System.out.println("Type \"!help\" to show all the available commands");
             String command;
-            // Reading data using readLine
             try{
                 command = reader.readLine();
                 executeCommand(command);
@@ -121,6 +76,9 @@ public class CLI extends Thread {
     private void executeCommand(String command) {
         String type = "";
         int mode = -1;
+        
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
 
         switch (command) {
             case "!help":
@@ -182,8 +140,9 @@ public class CLI extends Thread {
         }
 
         if(mode != -1) {
-            new CoapHandler(type, mode).start();
-            updateSensorValues(type, mode);
+        	String ip = driver.getIpFromActuatorType(type);
+            new CoapHandler(ip, type, mode).start();
+            MQTTPublisher.getInstance().updateSensorValues(type, mode);
         }
     }
 }
