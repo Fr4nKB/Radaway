@@ -36,7 +36,8 @@ public class MQTTCallback implements MqttCallback {
         String sensorTypeNum = "";
         if(sensorType == "temperature") sensorTypeNum = "0";
         else if(sensorType == "pressure") sensorTypeNum = "1";
-        else sensorTypeNum = "0";
+        else if(sensorType == "neutron_flux") sensorTypeNum = "2"
+        else return;
         
         
 		Map<String, String> ipAndType = driver.getActuatorInfoFromSensorType(sensorTypeNum);
