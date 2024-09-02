@@ -18,7 +18,7 @@ static coap_endpoint_t server_ep;
 static coap_message_t request[1];       /* This way  the packet can be treated as pointer as usual. */
 
 static char *service_registration_url = "/registration";
-static char *registration_payload = "{\"name\":\"actuator_coolant_flow\", \"sensor_types\":[\"temperature\", \"pressure\"]}";
+static char *registration_payload = "{\"name\":\"actuator_coolant_flow\",\"sensor_types\":[0,1]}";
 static bool registration_status = false;
 
 extern coap_resource_t res_coolant_flow;

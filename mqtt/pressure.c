@@ -176,10 +176,24 @@ PROCESS_THREAD(sensor, ev, data) {
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
     //button initialization
-    btn = button_hal_get_by_ind(0);
+    btn = button_hal_get_by_id(0);
+	leds_set(LEDS_BLUE);
 
 	while(true) {
 		PROCESS_YIELD();
+		
+		if(ev == button_hal_press_event) {
+            btn = (button_hal_button_t *)data;
+            if(btn->unique_id == 0) {
+				max_decrease_perc = (max_decrease_perc + 1) % 7;
+				if(max_decrease_perc == 0) {
+					max_decrease_perc = 3;
+					leds_set(LEDS_RED);
+				}
+				else leds_set(LEDS_BLUE);
+                LOG_INFO("CHANGED MAX DECREASE PERCENTAGE TO: %d\n", max_decrease_perc);
+            }
+        }
 
         if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
@@ -216,11 +230,12 @@ PROCESS_THREAD(sensor, ev, data) {
             	pressure -= rand() % max_decrease_perc;
             }
             else {
-            	variation = rand() % 2;
-            	if(rand() % 2 == 1) pressure += variation;
-            	else pressure -= variation;
+            	variation = rand() % 4;
+            	if(rand() % 3 == 1) pressure -= variation;
+            	else pressure += variation;
             }
-
+            if(pressure < 140 || pressure > 200) pressure = 140;
+            
 			LOG_INFO("NEW PRESSURE: %d\n", pressure);
 			
 			sprintf(pub_topic, "%s", "pressure");
@@ -234,19 +249,6 @@ PROCESS_THREAD(sensor, ev, data) {
             state = STATE_INIT;
             etimer_set(&sleep_timer, RECONNECTION_INTERVAL);
             continue;
-        }
-
-        if(ev == button_hal_press_event) {
-            btn = (button_hal_button_t *)data;
-            if(btn->unique_id == 0) {
-				max_decrease_perc = (max_decrease_perc + 1) % 7;
-				if(max_decrease_perc == 0) {
-					max_decrease_perc = 3;
-					leds_set(LEDS_RED);
-				}
-				else leds_set(LEDS_BLUE);
-                LOG_INFO("CHANGED MAX DECREASE PERCENTAGE TO: %d\n", max_decrease_perc);
-            }
         }
         
         etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);

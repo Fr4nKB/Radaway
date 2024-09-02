@@ -175,10 +175,19 @@ PROCESS_THREAD(sensor, ev, data) {
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
     //button initialization
-    btn = button_hal_get_by_ind(0);
+    btn = button_hal_get_by_id(0);
+	leds_set(LEDS_BLUE);
 
 	while(true) {
 		PROCESS_YIELD();
+		
+		if(ev == button_hal_press_event) {
+            btn = (button_hal_button_t *)data;
+            if(btn->unique_id == 0) {
+		temperature += 20;
+                LOG_INFO("TEMPERATURE INCREASED AT: %d\n", temperature);
+            }
+        }
 
         if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
@@ -216,9 +225,11 @@ PROCESS_THREAD(sensor, ev, data) {
 	    }
 	    else {
 	    	variation = 6 - (rand() % 3);
-	    	if(rand() % 2 == 1) temperature += variation;
-	    	else temperature -= variation;
+	    	if(rand() % 3 == 1) temperature -= variation;
+	    	else temperature += variation;
 	    }
+	    
+	    if(temperature < 300 || temperature > 600) temperature = 300;
 			LOG_INFO("NEW TEMPERATURE: %d\n", temperature);
 			
 			sprintf(pub_topic, "%s", "temperature");
@@ -232,14 +243,6 @@ PROCESS_THREAD(sensor, ev, data) {
             state = STATE_INIT;
             etimer_set(&sleep_timer, RECONNECTION_INTERVAL);
             continue;
-        }
-
-		if(ev == button_hal_press_event) {
-            btn = (button_hal_button_t *)data;
-            if(btn->unique_id == 0) {
-		temperature += 20;
-                LOG_INFO("TEMPERATURE INCREASED AT: %d\n", temperature);
-            }
         }
         
         etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);

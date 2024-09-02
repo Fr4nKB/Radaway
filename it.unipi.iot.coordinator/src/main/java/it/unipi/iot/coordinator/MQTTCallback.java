@@ -32,8 +32,14 @@ public class MQTTCallback implements MqttCallback {
 
         double newAverage = calculateAverage(values);
         double oldAverage = calculateAverage(oldValues);
+
+        String sensorTypeNum = "";
+        if(sensorType == "temperature") sensorTypeNum = "0";
+        else if(sensorType == "pressure") sensorTypeNum = "1";
+        else sensorTypeNum = "0";
         
-		Map<String, String> ipAndType = driver.getActuatorInfoFromSensorType(sensorType);
+        
+		Map<String, String> ipAndType = driver.getActuatorInfoFromSensorType(sensorTypeNum);
 		String ip = ipAndType.get("ipv6");
 		String actuatorType = ipAndType.get("type");
 
@@ -48,8 +54,10 @@ public class MQTTCallback implements MqttCallback {
         	else newMode = rndVal;
         }
 
-        try { 
+        try {
         	if(newMode != -1) {
+                System.out.println("Auto correcting " + actuatorType + " to mode " + newMode);
+                System.out.println("Old average: " + oldAverage + "; New average: " + newAverage);
         		new CoapHandler(ip, actuatorType, newMode).start();
                 MQTTPublisher.getInstance().updateSensorValues(actuatorType, newMode);
         	}
@@ -76,7 +84,6 @@ public class MQTTCallback implements MqttCallback {
             updateActuatorStatus(topic, 0.05);
         }
         catch (Exception e) {
-            e.printStackTrace();
             return;
         }
     }

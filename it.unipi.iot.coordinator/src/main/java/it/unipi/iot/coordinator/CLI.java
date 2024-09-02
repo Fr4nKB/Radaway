@@ -50,9 +50,15 @@ public class CLI extends Thread {
         	return jsonObject.get("status").getAsInt();
     	}
         catch (Exception e) {
-            e.printStackTrace();
             return -1;
         }
+    }
+    
+    private void printStatus() {
+    	int controlRodsStatus = getActuatorCurrentStatus("actuator_control_rods");
+        int coolantFlowStatus = getActuatorCurrentStatus("actuator_coolant_flow");
+        System.out.println("Percentage of fully inserted control rods: " + controlRodsStatus + "%");
+        System.out.println("Coolant flow percentage: " + coolantFlowStatus + "%");
     }
 
     @Override
@@ -80,7 +86,7 @@ public class CLI extends Thread {
         System.out.print("\033[H\033[2J");
         System.out.flush();
 
-        switch (command) {
+        switch(command) {
             case "!help":
                 System.out.println("\nSTATUS:");
                 System.out.println("!status --> prints the status of all actuators");
@@ -94,11 +100,8 @@ public class CLI extends Thread {
                 break;
 
             case "!status":
-                int controlRodsStatus = getActuatorCurrentStatus("actuator_control_rods");
-                int coolantFlowStatus = getActuatorCurrentStatus("actuator_coolant_flow");
-                System.out.println("Percentage of fully inserted control rods: " + controlRodsStatus + "%");
-                System.out.println("Coolant flow percentage: " + coolantFlowStatus + "%");
-                break;
+            	printStatus();
+            	break;
 
             case "!shutdown":
                 type = "actuator_control_rods";
@@ -143,6 +146,7 @@ public class CLI extends Thread {
         	String ip = driver.getIpFromActuatorType(type);
             new CoapHandler(ip, type, mode).start();
             MQTTPublisher.getInstance().updateSensorValues(type, mode);
+        	printStatus();
         }
     }
 }

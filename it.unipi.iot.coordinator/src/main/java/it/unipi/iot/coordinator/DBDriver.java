@@ -165,7 +165,7 @@ public class DBDriver {
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(
                  "SELECT `ipv6`, `type` FROM `actuator` WHERE JSON_CONTAINS(`sensor_types`, ?, '$') LIMIT 1")) {
-        	statement.setString(1, "\"" + sensorType + "\"");
+            statement.setString(1, sensorType);
             ResultSet resultSet = statement.executeQuery();
 
             if (resultSet.next()) {
@@ -173,7 +173,7 @@ public class DBDriver {
                 result.put("type", resultSet.getString("type"));
             }
         } catch (final SQLException e) {
-            System.err.println("Error retrieving ip and type...");
+            System.err.println("Error retrieving ip and type: " + e.getMessage());
         }
 
         return result;
