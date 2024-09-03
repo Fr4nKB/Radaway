@@ -76,13 +76,15 @@ static struct mqtt_message *msg_ptr = 0;
 
 static struct mqtt_connection conn;
 
+#define MIN_PRESSURE 50
+#define MAX_PRESSURE 90
+
 PROCESS(sensor, "sensor_pressure");
 AUTOSTART_PROCESSES(&sensor);
 
 static bool increase_coolant_flow = false;
-static int pressure = 160;		//bar
+static int pressure = 70;		//bar
 static int variation = 0;
-static int max_decrease_perc = 3;
 
 // handle incoming messages
 static void pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len) {
@@ -185,15 +187,13 @@ PROCESS_THREAD(sensor, ev, data) {
 		if(ev == button_hal_press_event) {
             btn = (button_hal_button_t *)data;
             if(btn->unique_id == 0) {
-				max_decrease_perc = (max_decrease_perc + 1) % 7;
-				if(max_decrease_perc == 0) {
-					max_decrease_perc = 3;
-					leds_set(LEDS_RED);
-				}
-				else leds_set(LEDS_BLUE);
-                LOG_INFO("CHANGED MAX DECREASE PERCENTAGE TO: %d\n", max_decrease_perc);
+				pressure -= 1;
+                LOG_INFO("PRESSURE DECREASED AT: %d\n", pressure);
             }
         }
+
+		if(pressure == MIN_PRESSURE) leds_set(LEDS_RED);
+		else leds_set(LEDS_BLUE);
 
         if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
@@ -227,15 +227,16 @@ PROCESS_THREAD(sensor, ev, data) {
             
         if(state == STATE_SUBSCRIBED) {
             if(increase_coolant_flow) {
-            	pressure -= rand() % max_decrease_perc;
+            	pressure += rand() % 2;
             }
             else {
-            	variation = rand() % 4;
-            	if(rand() % 3 == 1) pressure -= variation;
-            	else pressure += variation;
+            	variation = rand() % 2;
+            	if(rand() % 3 == 1) pressure += variation;
+            	else pressure -= variation;
             }
-            if(pressure < 140 || pressure > 200) pressure = 140;
-            
+
+            if(pressure < MIN_PRESSURE) pressure = MIN_PRESSURE;
+			else if(pressure > MAX_PRESSURE) pressure = MAX_PRESSURE;
 			LOG_INFO("NEW PRESSURE: %d\n", pressure);
 			
 			sprintf(pub_topic, "%s", "pressure");

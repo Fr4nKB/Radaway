@@ -100,6 +100,20 @@ public class DBDriver {
         }
     }
 
+    public String getLatestActuatorMode(String type) {
+        String mode = "";
+        try(Connection connection = getConnection();
+            PreparedStatement statement = connection.prepareStatement("SELECT `mode` FROM `" + type + "` ORDER BY `timestamp` DESC LIMIT 1");
+            ResultSet resultSet = statement.executeQuery()) {
+            if(resultSet.next()) mode = resultSet.getString("mode");
+        }
+        catch (final SQLException e) {
+            System.err.println("Error fetching latest actuator mode...");
+        }
+        
+        return mode;
+    }
+
     public void insertSensorSample(String type, int value) {
         try(Connection connection = getConnection();
             PreparedStatement statement = connection.prepareStatement("INSERT INTO `" + type + "` (`value`) VALUES (?)")) {
@@ -108,6 +122,21 @@ public class DBDriver {
         } catch (final SQLException e) {
             return;
         }
+    }
+
+    public int getLatestSensorValue(String type) {
+        int latestValue = -1;
+        try(Connection connection = getConnection();
+            PreparedStatement statement = connection.prepareStatement("SELECT `value` FROM `" + type + "` ORDER BY `timestamp` DESC LIMIT 1");
+            ResultSet resultSet = statement.executeQuery()) {
+            
+            if(resultSet.next()) latestValue = resultSet.getInt("value");
+        }
+        catch (final SQLException e) {
+            System.err.println("Error fetching latest sensor value...");
+        }
+        
+        return latestValue;
     }
 
     public List<Integer> getValuesFromLastSeconds(String type, int secondsAgoInit, int secondsAgoEnd) {

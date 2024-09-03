@@ -13,13 +13,8 @@ public class MQTTPublisher {
     String broker = "tcp://[::1]:1883";
     String clientId = "RemoteAppPublisher";
     int qos = 2;    //ensure highest reliability at a speed cost
-    private List<Integer> lastModes;
     
     private MQTTPublisher() {
-        lastModes = new ArrayList<>();
-        lastModes.add(2);
-        lastModes.add(0);
-        
         try {
         	client = new MqttClient(broker, clientId);
             client.connect();
@@ -37,7 +32,11 @@ public class MQTTPublisher {
         return instance;
     }
     
-    private void publishValue(String topic, String content) {
+    public void publishValue(String actuatorType, String content) {
+        String topic = ""
+        if(actuatorType.equals("actuator_control_rods")) topic = "control_rods";
+        else if(actuatorType.equals("actuator_coolant_flow")) topic = "coolant";
+        else return;
         try {
             MqttMessage message = new MqttMessage(content.getBytes());
             message.setQos(qos);
@@ -45,25 +44,6 @@ public class MQTTPublisher {
         }
         catch (MqttException e) {
             e.printStackTrace();
-        }
-    }
-    
-    public void updateSensorValues(String type, int mode) {
-        String content = "";
-
-        if(type.equals("actuator_control_rods")) {
-            if(mode > lastModes.get(0)) content = "INC";
-            else if(mode < lastModes.get(0)) content = "DEC";
-            lastModes.set(0, mode);
-            
-            if(content != "") publishValue("control_rods", content);
-        }
-        else if(type.equals("actuator_coolant_flow")) {
-            if(mode < lastModes.get(1)) content = "INC";
-            else if(mode > lastModes.get(0)) content = "DEC";
-            lastModes.set(1, mode);
-            
-            if(content != "") publishValue("coolant", content);
         }
     }
 }

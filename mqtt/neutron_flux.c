@@ -76,13 +76,15 @@ static struct mqtt_message *msg_ptr = 0;
 
 static struct mqtt_connection conn;
 
+#define MIN_FLUX 0
+#define MAX_FLUX 45
+
 PROCESS(sensor, "sensor_neutron_flux");
 AUTOSTART_PROCESSES(&sensor);
 
 static bool increase_inserted_control_rods = true;
-static int neutron_flux = 0;  // Giga neutrons/cm^2/s
+static int neutron_flux = 0;  // "Tera" neutrons/cm^2/s
 static int variation = 0;
-static int max_increase_perc = 6;
 
 // handle incoming messages
 static void pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len) {
@@ -175,25 +177,23 @@ PROCESS_THREAD(sensor, ev, data) {
 	// Initialize periodic timer to check the status 
 	etimer_set(&periodic_timer, PUBLISH_INTERVAL);
 
-    	//button initialization
-    	btn = button_hal_get_by_id(0);
-	leds_set(LEDS_BLUE);
+	//button initialization
+	btn = button_hal_get_by_id(0);
+	leds_set(LEDS_RED);
     	
 	while(true) {
 		PROCESS_YIELD();
 		
-	if(ev == button_hal_press_event) {
+		if(ev == button_hal_press_event) {
             btn = (button_hal_button_t *)data;
             if(btn->unique_id == 0) {
-				max_increase_perc = (max_increase_perc + 1) % 7;
-				if(max_increase_perc == 0) {
-					max_increase_perc = 3;
-					leds_set(LEDS_RED);
-				}
-				else leds_set(LEDS_BLUE);
-                LOG_INFO("CHANGED MAX DECREASE PERCENTAGE TO: %d\n", max_increase_perc);
+				neutron_flux -= 3 + rand() % 3;
+                LOG_INFO("NEUTRON FLUX DECREASED AT: %d\n", neutron_flux);
             }
         }
+
+		if(neutron_flux == MIN_FLUX) leds_set(LEDS_RED);
+		else leds_set(LEDS_BLUE);
 
         if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
@@ -228,15 +228,16 @@ PROCESS_THREAD(sensor, ev, data) {
         if(state == STATE_SUBSCRIBED) {
             if(increase_inserted_control_rods) {
             	variation = neutron_flux * (rand() % 4)/100.0;
-            	if(rand() % 3 == 1) neutron_flux += variation;
+            	if(rand() % 4 == 1) neutron_flux += variation;
             	else neutron_flux -= variation;
-            	
-            	if(neutron_flux <= 0) neutron_flux = 1;
             }
             else {
-            	if(neutron_flux < 5000) neutron_flux = 5000;	// jump start
-            	else neutron_flux += neutron_flux * (rand() % max_increase_perc)/100.0;
+            	if(neutron_flux == MIN_FLUX) neutron_flux = 10;	// jump start
+            	else neutron_flux += neutron_flux * (rand() % 3)/100.0;
             }
+
+			if(neutron_flux < MIN_FLUX) neutron_flux = MIN_FLUX;
+			else if(neutron_flux > MAX_FLUX) neutron_flux = MAX_FLUX;
 
 			LOG_INFO("NEW NEUTRON FLUX: %d\n", neutron_flux);
 			

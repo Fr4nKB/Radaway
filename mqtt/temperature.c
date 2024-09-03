@@ -76,11 +76,14 @@ static struct mqtt_message *msg_ptr = 0;
 
 static struct mqtt_connection conn;
 
+#define MIN_TEMP 230
+#define MAX_TEMP 300
+
 PROCESS(sensor, "sensor_temperature");
 AUTOSTART_PROCESSES(&sensor);
 
 static bool increase_coolant_flow = false;
-static int temperature = 290;		//celsius
+static int temperature = 265;		//celsius
 static int variation = 0;
 
 // handle incoming messages
@@ -184,10 +187,13 @@ PROCESS_THREAD(sensor, ev, data) {
 		if(ev == button_hal_press_event) {
             btn = (button_hal_button_t *)data;
             if(btn->unique_id == 0) {
-		temperature += 20;
-                LOG_INFO("TEMPERATURE INCREASED AT: %d\n", temperature);
-            }
+				temperature += 10;
+				LOG_INFO("TEMPERATURE INCREASED AT: %d\n", temperature);
+			}
         }
+
+		if(temperature == MAX_TEMP) leds_set(LEDS_RED);
+		else leds_set(LEDS_BLUE);
 
         if(!((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL) || (ev == PROCESS_EVENT_TIMER && data == &sleep_timer))
 			continue;
@@ -221,21 +227,22 @@ PROCESS_THREAD(sensor, ev, data) {
             
         if(state == STATE_SUBSCRIBED) {
             if(increase_coolant_flow) {
-	    	temperature -= rand() % 4;
-	    }
-	    else {
-	    	variation = 6 - (rand() % 3);
-	    	if(rand() % 3 == 1) temperature -= variation;
-	    	else temperature += variation;
-	    }
-	    
-	    if(temperature < 300 || temperature > 600) temperature = 300;
+	    		temperature -= rand() % 5;
+	    	}
+			else {
+				variation = rand() % 7;
+				if(rand() % 3 == 1) temperature -= variation;
+				else temperature += variation;
+			}
+			
+			if(temperature < MIN_TEMP) temperature = MIN_TEMP;
+			else if(temperature > MAX_TEMP) temperature = MAX_TEMP;
 			LOG_INFO("NEW TEMPERATURE: %d\n", temperature);
 			
 			sprintf(pub_topic, "%s", "temperature");
 			sprintf(app_buffer, "{\"value\": %d}", temperature);
 			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer),
-                MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
+				MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
         }
 
         else if(state == STATE_DISCONNECTED ) {

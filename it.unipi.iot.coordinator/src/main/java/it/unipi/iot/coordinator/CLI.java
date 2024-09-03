@@ -54,7 +54,7 @@ public class CLI extends Thread {
         }
     }
     
-    private void printStatus() {
+    private void printActuatorsStatus() {
     	int controlRodsStatus = getActuatorCurrentStatus("actuator_control_rods");
         int coolantFlowStatus = getActuatorCurrentStatus("actuator_coolant_flow");
         System.out.println("Percentage of fully inserted control rods: " + controlRodsStatus + "%");
@@ -82,6 +82,7 @@ public class CLI extends Thread {
     private void executeCommand(String command) {
         String type = "";
         int mode = -1;
+        String content = "";
         
         System.out.print("\033[H\033[2J");
         System.out.flush();
@@ -89,7 +90,8 @@ public class CLI extends Thread {
         switch(command) {
             case "!help":
                 System.out.println("\nSTATUS:");
-                System.out.println("!status --> prints the status of all actuators");
+                System.out.println("!actuators --> prints the status of all actuators");
+                System.out.println("!sensors --> prints the latest value from all the sensors");
                 System.out.println("\nACTIONS:");
                 System.out.println("!shutdown --> to fully insert all control rods");
                 System.out.println("!startup --> start fission reaction");
@@ -99,18 +101,29 @@ public class CLI extends Thread {
                 System.out.println("!cooldown --> set coolant flow to max");
                 break;
 
-            case "!status":
-            	printStatus();
+            case "!actuators":
+            	printActuatorsStatus();
+            	break;
+
+            case "!sensors":
+            	String latestTemperature = driver.getLatestSensorValue("temperature");
+            	String latestPressure = driver.getLatestSensorValue("pressure");
+            	String latestNeutronFlux = driver.getLatestSensorValue("neutron_flux");
+                System.out.println("Temperature: " + latestTemperature + " C");
+                System.out.println("Pressure: " + latestPressure + " bar");
+                System.out.println("Neutron Flux: " + latestNeutronFlux + "*10^12 netruons/cm^2/s");
             	break;
 
             case "!shutdown":
                 type = "actuator_control_rods";
                 mode = 2;
+                content = "INC";
                 break;
 
             case "!startup":
                 type = "actuator_control_rods";
                 mode = 1;
+                content = "DEC";
                 break;
 
             case "!regime":
@@ -120,6 +133,7 @@ public class CLI extends Thread {
                 }
                 type = "actuator_control_rods";
                 mode = 0;
+                content = "DEC";
                 break;
 
             case "!coolant_off":
@@ -129,24 +143,27 @@ public class CLI extends Thread {
                 }
                 type = "actuator_coolant_flow";
                 mode = 0;
+                content = "DEC";
                 break;
 
             case "!coolant_on":
                 type = "actuator_coolant_flow";
                 mode = 1;
+                content = "INC";
                 break;
 
             case "!cooldown":
                 type = "actuator_coolant_flow";
                 mode = 2;
+                content = "INC";
                 break;
         }
 
         if(mode != -1) {
         	String ip = driver.getIpFromActuatorType(type);
             new CoapHandler(ip, type, mode).start();
-            MQTTPublisher.getInstance().updateSensorValues(type, mode);
-        	printStatus();
+            MQTTPublisher.getInstance().publishValue(type, mode);
+        	printActuatorsStatus();
         }
     }
 }
