@@ -84,6 +84,7 @@ public class DBDriver {
             statement.executeUpdate();
         }
         catch(final SQLException e) {
+            e.printStackTrace();
             System.err.println("Skipping replace...");
         }
     }
@@ -96,22 +97,24 @@ public class DBDriver {
             statement.executeUpdate();
         }
         catch (final SQLException e) {
+            e.printStackTrace();
             System.err.println("Skipping insert...");
         }
     }
 
-    public String getLatestActuatorMode(String type) {
-        String mode = "";
+    public String getLatestActuatorValue(String type) {
+        String value = "";
         try(Connection connection = getConnection();
-            PreparedStatement statement = connection.prepareStatement("SELECT `mode` FROM `" + type + "` ORDER BY `timestamp` DESC LIMIT 1");
+            PreparedStatement statement = connection.prepareStatement("SELECT `value` FROM `" + type + "` ORDER BY `timestamp` DESC LIMIT 1");
             ResultSet resultSet = statement.executeQuery()) {
-            if(resultSet.next()) mode = resultSet.getString("mode");
+            if(resultSet.next()) value = resultSet.getString("value");
         }
         catch (final SQLException e) {
+            e.printStackTrace();
             System.err.println("Error fetching latest actuator mode...");
         }
         
-        return mode;
+        return value;
     }
 
     public void insertSensorSample(String type, int value) {

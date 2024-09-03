@@ -11,7 +11,6 @@ import com.google.gson.JsonObject;
 
 public class CoapHandler extends Thread {
 
-    private DBDriver driver;
     private String ipv6;
     private String type;
     private int mode;
@@ -34,7 +33,7 @@ public class CoapHandler extends Thread {
 
                 switch(code) {
                     case CHANGED:
-                        driver.insertActuatorStatus(type, ipv6, mode);
+                    	DBDriver.getInstance().insertActuatorStatus(type, ipv6, mode);
                         break;
 
                     case BAD_REQUEST:

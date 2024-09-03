@@ -17,5 +17,9 @@ public class Coordinator {
         catch(Exception e) {
         	e.printStackTrace();
         }
+        
+        // Start actuator updater
+        ActuatorsUpdater updater = new ActuatorsUpdater();
+        updater.run();
     }
 }

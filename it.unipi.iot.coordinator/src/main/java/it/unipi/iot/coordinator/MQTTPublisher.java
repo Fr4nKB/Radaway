@@ -33,7 +33,7 @@ public class MQTTPublisher {
     }
     
     public void publishValue(String actuatorType, String content) {
-        String topic = ""
+        String topic = "";
         if(actuatorType.equals("actuator_control_rods")) topic = "control_rods";
         else if(actuatorType.equals("actuator_coolant_flow")) topic = "coolant";
         else return;

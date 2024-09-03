@@ -77,13 +77,13 @@ static struct mqtt_message *msg_ptr = 0;
 static struct mqtt_connection conn;
 
 #define MIN_FLUX 0
-#define MAX_FLUX 45
+#define MAX_FLUX 45000
 
 PROCESS(sensor, "sensor_neutron_flux");
 AUTOSTART_PROCESSES(&sensor);
 
 static bool increase_inserted_control_rods = true;
-static int neutron_flux = 0;  // "Tera" neutrons/cm^2/s
+static int neutron_flux = 0;  // "Giga" neutrons/cm^2/s
 static int variation = 0;
 
 // handle incoming messages
@@ -227,13 +227,12 @@ PROCESS_THREAD(sensor, ev, data) {
             
         if(state == STATE_SUBSCRIBED) {
             if(increase_inserted_control_rods) {
-            	variation = neutron_flux * (rand() % 4)/100.0;
-            	if(rand() % 4 == 1) neutron_flux += variation;
-            	else neutron_flux -= variation;
+            	neutron_flux -= (rand() % 1000);
             }
             else {
-            	if(neutron_flux == MIN_FLUX) neutron_flux = 10;	// jump start
-            	else neutron_flux += neutron_flux * (rand() % 3)/100.0;
+            	variation = (rand() % 2000);
+            	if(rand() % 4 == 1) neutron_flux -= variation;
+            	else neutron_flux += variation;
             }
 
 			if(neutron_flux < MIN_FLUX) neutron_flux = MIN_FLUX;

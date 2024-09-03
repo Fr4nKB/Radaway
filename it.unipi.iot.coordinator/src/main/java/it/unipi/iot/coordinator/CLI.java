@@ -84,8 +84,8 @@ public class CLI extends Thread {
         int mode = -1;
         String content = "";
         
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
+//        System.out.print("\033[H\033[2J");
+//        System.out.flush();
 
         switch(command) {
             case "!help":
@@ -106,12 +106,12 @@ public class CLI extends Thread {
             	break;
 
             case "!sensors":
-            	String latestTemperature = driver.getLatestSensorValue("temperature");
-            	String latestPressure = driver.getLatestSensorValue("pressure");
-            	String latestNeutronFlux = driver.getLatestSensorValue("neutron_flux");
+            	int latestTemperature = driver.getLatestSensorValue("temperature");
+            	int latestPressure = driver.getLatestSensorValue("pressure");
+            	int latestNeutronFlux = driver.getLatestSensorValue("neutron_flux");
                 System.out.println("Temperature: " + latestTemperature + " C");
                 System.out.println("Pressure: " + latestPressure + " bar");
-                System.out.println("Neutron Flux: " + latestNeutronFlux + "*10^12 netruons/cm^2/s");
+                System.out.println("Neutron Flux: " + latestNeutronFlux + " * 10^9 neutrons/cm^2/s");
             	break;
 
             case "!shutdown":
@@ -162,7 +162,7 @@ public class CLI extends Thread {
         if(mode != -1) {
         	String ip = driver.getIpFromActuatorType(type);
             new CoapHandler(ip, type, mode).start();
-            MQTTPublisher.getInstance().publishValue(type, mode);
+            MQTTPublisher.getInstance().publishValue(type, content);
         	printActuatorsStatus();
         }
     }

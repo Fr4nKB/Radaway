@@ -187,7 +187,7 @@ PROCESS_THREAD(sensor, ev, data) {
 		if(ev == button_hal_press_event) {
             btn = (button_hal_button_t *)data;
             if(btn->unique_id == 0) {
-				pressure -= 1;
+				pressure -= 3;
                 LOG_INFO("PRESSURE DECREASED AT: %d\n", pressure);
             }
         }
@@ -210,7 +210,7 @@ PROCESS_THREAD(sensor, ev, data) {
                         MQTT_CLEAN_SESSION_ON);
 
             state = STATE_CONNECTING;
-        }
+        }&&
         
         if(state == STATE_CONNECTED) {
             strcpy(sub_topic, "coolant");
