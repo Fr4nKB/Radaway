@@ -37,7 +37,6 @@ public class ActuatorsUpdater extends Thread {
         switch(sensorType) {
             case "temperature":
                 sensorTypeNum = "0";
-
                 if(average > 1.05 * NOMINAL_TEMPERATURE) {
                     content = "INC";
                     conditions[0] = true;
@@ -52,7 +51,6 @@ public class ActuatorsUpdater extends Thread {
 
             case "pressure":
                 sensorTypeNum = "1";
-
                 if(average < 0.95 * NOMINAL_PRESSURE) {
                     content = "INC";
                     conditions[1] = true;
@@ -69,12 +67,11 @@ public class ActuatorsUpdater extends Thread {
                 sensorTypeNum = "2";
                 int latestMode = 2;
                 try {
-                	
                 	latestMode = Integer.parseInt(driver.getLatestActuatorValue("actuator_control_rods"));
-		}
-		catch(Exception e) {
-			//
-		}
+                }
+                catch(Exception e) {
+                    //
+                }
                 // increment the number of inserted control rods if the neutron flux is decreasing 
                 // meanwhile temperature is increasing and pressure decreasing
                 // or if the mode is shutdown
@@ -92,6 +89,7 @@ public class ActuatorsUpdater extends Thread {
                 }
 
                 break;
+                
             default:
                 return;
         }
